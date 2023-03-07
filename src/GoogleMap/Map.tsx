@@ -1,68 +1,62 @@
-import React, { useState, useEffect } from "react";
-import { GoogleMap, Marker, StandaloneSearchBox, useJsApiLoader } from "@react-google-maps/api";
+import React, { useState, useCallback, useRef, useEffect } from "react";
+import { GoogleMap, Marker, StandaloneSearchBox, useLoadScript } from "@react-google-maps/api";
 import { Col, Input, Row } from "antd";
 
 const containerStyle = {
   width: "100%",
-  height: "520px",
+  height: "460px",
 };
 
-function MapMain(params: { apiKey: string }) {
-
-  const { isLoaded } = useJsApiLoader({
-    id: "google-map-script",
-    googleMapsApiKey: params.apiKey,
-    libraries: ["places"],
+function MapMain(props: { apiKey: string, center: google.maps.LatLngLiteral }) {
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: props.apiKey,
+    libraries: ["places", "geometry"],
   });
 
-  const [searchBox, setSearchBox] = useState<google.maps.places.SearchBox | null>(null);
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [center, setCenter] = useState({ lat: 37.7749, lng: -122.4194 }); // San Francisco as default location
-  const [markerPosition, setMarkerPosition] = useState<google.maps.LatLngLiteral | null>(null);
-  const [geocoder, setGeocoder] = useState<google.maps.Geocoder | null>(null);
+  const searchBoxRef = useRef<google.maps.places.SearchBox>();
+  const mapRef = useRef<google.maps.Map>();
+
+  const [center, setCenter] = useState(props.center);
+  const [markerPosition, setMarkerPosition] = useState<google.maps.LatLng | null>(null);
   const [searchedAddress, setSearchedAddress] = useState<string | null>(null);
+  const [geocoder, setGeocoder] = useState<google.maps.Geocoder | null>(null);
 
-  useEffect(() => {
-    if (map) {
-      console.log("Map is loaded");
-    }
-  }, [map]);
-
-  const handleLoad = (ref: google.maps.places.SearchBox) => {
-    setSearchBox(ref);
+  const handleSearchBoxLoad = (ref: google.maps.places.SearchBox) => {
+    searchBoxRef.current = ref;
     setGeocoder(new window.google.maps.Geocoder());
   };
 
   const handlePlacesChanged = () => {
-    const places = searchBox?.getPlaces();
+    const places = searchBoxRef.current?.getPlaces();
 
     if (places && places.length) {
       const { geometry, formatted_address } = places[0];
-      // @ts-ignore
-      const { lat, lng } = geometry.location;
-      setCenter({ lat: lat(), lng: lng() });
-      setMarkerPosition({ lat: lat(), lng: lng() });
-      // @ts-ignore
-      setSearchedAddress(formatted_address);
+      const location = geometry?.location;
+      if (location) {
+        setCenter({ lat: location.lat(), lng: location.lng() });
+        setMarkerPosition(location);
+      }
+      if (formatted_address) {
+        setSearchedAddress(formatted_address);
+      }
     }
   };
 
-  // @ts-ignore
-  const handleMapClick = (event: google.maps.MouseEvent) => {
-    const lat = event.latLng.lat();
-    const lng = event.latLng.lng();
-    setCenter({ lat, lng });
-    setMarkerPosition({ lat, lng });
-    console.log(`${lat},${lng}`);
+  const handleMapClick = (event: google.maps.MapMouseEvent) => {
+    setMarkerPosition(event.latLng);
   };
 
-  // @ts-ignore
-  const handleMarkerDragEnd = (event: google.maps.MouseEvent) => {
-    const lat = event.latLng.lat();
-    const lng = event.latLng.lng();
-    setMarkerPosition({ lat, lng });
-    console.log(`${lat},${lng}`);
+  const handleMarkerDragEnd = (event: google.maps.MapMouseEvent) => {
+    setMarkerPosition(event.latLng);
   };
+
+  const handleMapLoaded = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+  }, []);
+
+  const handleMarkerPositionChanged = useCallback(() => {
+
+  }, []);
 
   useEffect(() => {
     if (!markerPosition || !geocoder) {
@@ -85,26 +79,31 @@ function MapMain(params: { apiKey: string }) {
       <>
         <Row gutter={[16, 16]}>
           <Col span={24}>
-            <StandaloneSearchBox onLoad={handleLoad} onPlacesChanged={handlePlacesChanged}>
+            <StandaloneSearchBox onLoad={handleSearchBoxLoad} onPlacesChanged={handlePlacesChanged}>
               <Input placeholder="Search address" />
             </StandaloneSearchBox>
           </Col>
           <Col span={24}>
-            {searchedAddress && <p>{searchedAddress}</p>}
+            {searchedAddress && <span>{searchedAddress}</span>}
             <GoogleMap center={center}
-                       zoom={13}
+                       zoom={10}
                        onClick={handleMapClick}
                        mapContainerStyle={containerStyle}
-                       onLoad={setMap}>
+                       onLoad={handleMapLoaded}
+            >
               {markerPosition &&
-                <Marker position={markerPosition} draggable={true} onDragEnd={handleMarkerDragEnd} />
+                <Marker position={markerPosition}
+                        draggable={true}
+                        onDragEnd={handleMarkerDragEnd}
+                        onPositionChanged={handleMarkerPositionChanged}
+                />
               }
             </GoogleMap>
           </Col>
         </Row>
       </>
     ) :
-    <></>;
+    <>Loading map...</>;
 }
 
 export default MapMain;

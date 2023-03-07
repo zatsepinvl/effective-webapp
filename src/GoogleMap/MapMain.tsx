@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Button, Col, Input, Row } from "antd";
 import Map from "./Map";
 
-let STORAGE_API_KEY = "GoogleMapsApiKey";
+const STORAGE_API_KEY = "GoogleMapsApiKey";
+const CAPE_TOWN_CENTER = { lat: -33.9501, lng: 18.4885 };
 
 function MapMain() {
 
@@ -11,7 +12,6 @@ function MapMain() {
 
   useEffect(() => {
     const storedKey = localStorage.getItem(STORAGE_API_KEY);
-    console.log(storedKey);
     if (storedKey) {
       setApiKey(storedKey);
       setApiKeyInput(storedKey);
@@ -23,21 +23,28 @@ function MapMain() {
   };
 
   const changeApiKey = () => {
-    setApiKey(apiKeyInput);
     localStorage.setItem(STORAGE_API_KEY, apiKeyInput);
+    window.location.reload();
   };
 
   return (
     <>
       <Row gutter={[16, 16]}>
         <Col span={20}>
-          <Input placeholder="Google Maps API key..." value={apiKeyInput} onChange={handleApiKeyInput} />
+          <Input placeholder="Google Maps API key..."
+                 value={apiKeyInput}
+                 onChange={handleApiKeyInput}
+                 onPressEnter={changeApiKey} />
         </Col>
         <Col span={4}>
-          <Button type="primary" style={{ width: "100%" }} onClick={changeApiKey}>Load</Button>
+          <Button type="primary"
+                  style={{ width: "100%" }}
+                  onClick={changeApiKey}>
+            Load
+          </Button>
         </Col>
         <Col span={24}>
-          {apiKey && <Map apiKey={apiKey} />}
+          {apiKey && <Map apiKey={apiKey} center={CAPE_TOWN_CENTER} />}
         </Col>
       </Row>
     </>
