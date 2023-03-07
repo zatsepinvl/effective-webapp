@@ -22,9 +22,12 @@ function MapMain(params: { apiKey: string }) {
   const [geocoder, setGeocoder] = useState<google.maps.Geocoder | null>(null);
   const [searchedAddress, setSearchedAddress] = useState<string | null>(null);
 
-  const loadMap = () => {
+  useEffect(() => {
+    if (map) {
+      console.log("Map is loaded");
+    }
+  }, [map]);
 
-  };
   const handleLoad = (ref: google.maps.places.SearchBox) => {
     setSearchBox(ref);
     setGeocoder(new window.google.maps.Geocoder());
@@ -88,7 +91,9 @@ function MapMain(params: { apiKey: string }) {
           </Col>
           <Col span={24}>
             {searchedAddress && <p>{searchedAddress}</p>}
-            <GoogleMap center={center} zoom={13} onClick={handleMapClick}
+            <GoogleMap center={center}
+                       zoom={13}
+                       onClick={handleMapClick}
                        mapContainerStyle={containerStyle}
                        onLoad={setMap}>
               {markerPosition &&
