@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Autocomplete, GoogleMap, Marker, useLoadScript } from "@react-google-maps/api";
 import { Col, Input, Row } from "antd";
+import * as geohash from "ngeohash";
 
 const containerStyle = {
   width: "100%",
@@ -73,6 +74,16 @@ function MapMain(props: { apiKey: string, center: google.maps.LatLngLiteral }) {
       }
     });
   }, [markerPosition, geocoder]);
+
+  useEffect(() => {
+    if (!markerPosition) {
+      return;
+    }
+    const ghash = geohash.encode(markerPosition.lat(), markerPosition.lng(), 4);
+    console.log("geohash: " + ghash);
+    const neighbours = geohash.neighbors(ghash);
+    console.log("neighbours: " + neighbours);
+  }, [markerPosition]);
 
 
   return isLoaded ? (
