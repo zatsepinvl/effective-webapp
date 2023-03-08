@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { GoogleMap, Marker, StandaloneSearchBox, useLoadScript } from "@react-google-maps/api";
+import { Autocomplete, GoogleMap, Marker, useLoadScript } from "@react-google-maps/api";
 import { Col, Input, Row } from "antd";
 
 const containerStyle = {
@@ -13,24 +13,24 @@ function MapMain(props: { apiKey: string, center: google.maps.LatLngLiteral }) {
     libraries: ["places", "geometry"],
   });
 
-  const searchBoxRef = useRef<google.maps.places.SearchBox>();
   const mapRef = useRef<google.maps.Map>();
+  const autocompleteRef = useRef<google.maps.places.Autocomplete>();
 
   const [center, setCenter] = useState(props.center);
   const [markerPosition, setMarkerPosition] = useState<google.maps.LatLng | null>(null);
   const [searchedAddress, setSearchedAddress] = useState<string | null>(null);
   const [geocoder, setGeocoder] = useState<google.maps.Geocoder | null>(null);
 
-  const handleSearchBoxLoad = (ref: google.maps.places.SearchBox) => {
-    searchBoxRef.current = ref;
+  const handleAutocompleteLoaded = (ref: google.maps.places.Autocomplete) => {
+    autocompleteRef.current = ref;
     setGeocoder(new window.google.maps.Geocoder());
   };
 
-  const handlePlacesChanged = () => {
-    const places = searchBoxRef.current?.getPlaces();
+  const handlePlaceChanged = () => {
+    const place = autocompleteRef.current?.getPlace();
 
-    if (places && places.length) {
-      const { geometry, formatted_address } = places[0];
+    if (place) {
+      const { geometry, formatted_address } = place;
       const location = geometry?.location;
       if (location) {
         setCenter({ lat: location.lat(), lng: location.lng() });
@@ -79,12 +79,19 @@ function MapMain(props: { apiKey: string, center: google.maps.LatLngLiteral }) {
       <>
         <Row gutter={[16, 16]}>
           <Col span={24}>
-            <StandaloneSearchBox onLoad={handleSearchBoxLoad} onPlacesChanged={handlePlacesChanged}>
+            <Autocomplete onLoad={handleAutocompleteLoaded}
+                          onPlaceChanged={handlePlaceChanged}>
               <Input placeholder="Search address" />
-            </StandaloneSearchBox>
+            </Autocomplete>
           </Col>
           <Col span={24}>
-            {searchedAddress && <span>{searchedAddress}</span>}
+            {markerPosition && searchedAddress &&
+              <i>
+                <span>{markerPosition.toUrlValue()}</span>
+                <span> | </span>
+                <span>{searchedAddress}</span>
+              </i>
+            }
             <GoogleMap center={center}
                        zoom={10}
                        onClick={handleMapClick}
