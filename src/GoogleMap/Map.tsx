@@ -114,6 +114,7 @@ function MapMain(props: { apiKey: string, center: google.maps.LatLngLiteral }) {
                         draggable={true}
                         onDragEnd={handleMarkerDragEnd}
                         onPositionChanged={handleMarkerPositionChanged}
+                        animation={google.maps.Animation.DROP}
                 />
               }
             </GoogleMap>
