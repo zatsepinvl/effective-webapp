@@ -1,17 +1,20 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Autocomplete, GoogleMap, Marker, useLoadScript } from "@react-google-maps/api";
-import { Col, Input, Row } from "antd";
+import { Col, Input, Row, Switch } from "antd";
 import * as geohash from "ngeohash";
+import { Libraries } from "@react-google-maps/api/dist/utils/make-load-script-url";
 
 const containerStyle = {
   width: "100%",
   height: "460px",
 };
 
+const libraries: Libraries = ["places", "geometry"];
+
 function MapMain(props: { apiKey: string, center: google.maps.LatLngLiteral }) {
   const { isLoaded } = useLoadScript({
     googleMapsApiKey: props.apiKey,
-    libraries: ["places", "geometry"],
+    libraries,
   });
 
   const mapRef = useRef<google.maps.Map>();
@@ -20,44 +23,9 @@ function MapMain(props: { apiKey: string, center: google.maps.LatLngLiteral }) {
   const [center, setCenter] = useState(props.center);
   const [markerPosition, setMarkerPosition] = useState<google.maps.LatLng | null>(null);
   const [searchedAddress, setSearchedAddress] = useState<string | null>(null);
+  const [placeId, setPlaceId] = useState<string | null>(null);
   const [geocoder, setGeocoder] = useState<google.maps.Geocoder | null>(null);
 
-  const handleAutocompleteLoaded = (ref: google.maps.places.Autocomplete) => {
-    autocompleteRef.current = ref;
-    setGeocoder(new window.google.maps.Geocoder());
-  };
-
-  const handlePlaceChanged = () => {
-    const place = autocompleteRef.current?.getPlace();
-
-    if (place) {
-      const { geometry, formatted_address } = place;
-      const location = geometry?.location;
-      if (location) {
-        setCenter({ lat: location.lat(), lng: location.lng() });
-        setMarkerPosition(location);
-      }
-      if (formatted_address) {
-        setSearchedAddress(formatted_address);
-      }
-    }
-  };
-
-  const handleMapClick = (event: google.maps.MapMouseEvent) => {
-    setMarkerPosition(event.latLng);
-  };
-
-  const handleMarkerDragEnd = (event: google.maps.MapMouseEvent) => {
-    setMarkerPosition(event.latLng);
-  };
-
-  const handleMapLoaded = useCallback((map: google.maps.Map) => {
-    mapRef.current = map;
-  }, []);
-
-  const handleMarkerPositionChanged = useCallback(() => {
-
-  }, []);
 
   useEffect(() => {
     if (!markerPosition || !geocoder) {
@@ -85,35 +53,103 @@ function MapMain(props: { apiKey: string, center: google.maps.LatLngLiteral }) {
     console.log("neighbours: " + neighbours);
   }, [markerPosition]);
 
+  const handleMapLoaded = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+  }, []);
+
+  const handleAutocompleteLoaded = (ref: google.maps.places.Autocomplete) => {
+    autocompleteRef.current = ref;
+    setGeocoder(new window.google.maps.Geocoder());
+  };
+
+  const handleAutocompletePlaceChanged = () => {
+    const place = autocompleteRef.current?.getPlace();
+
+    if (place) {
+      setPlaceId(place.place_id ?? null);
+      const { geometry, formatted_address } = place;
+      const location = geometry?.location;
+      if (location) {
+        setCenter({ lat: location.lat(), lng: location.lng() });
+        setMarkerPosition(location);
+      }
+      if (formatted_address) {
+        setSearchedAddress(formatted_address);
+      }
+    }
+  };
+
+  const handleMapClick = (event: google.maps.MapMouseEvent) => {
+    handleMarkerPositionChanged(event);
+  };
+
+  const handleMarkerDragEnd = (event: google.maps.MapMouseEvent) => {
+    handleMarkerPositionChanged(event);
+  };
+
+  const handleMarkerPositionChanged = (event: google.maps.MapMouseEvent) => {
+    setMarkerPosition(event.latLng);
+    geocodeMarkerCoordinatesToPlaceId(event);
+  };
+
+  const geocodeMarkerCoordinatesToPlaceId = (event: google.maps.MapMouseEvent) => {
+    geocoder?.geocode({ location: event.latLng })
+      .then((response) => {
+        if (response.results[0]) {
+          console.log(response.results[0]);
+          setSearchedAddress(response.results[0].formatted_address);
+          setPlaceId(response.results[0].place_id);
+        } else {
+          console.warn(`Unable to make reverse geocode request for ${markerPosition?.toUrlValue()}`);
+        }
+      });
+  };
 
   return isLoaded ? (
       <>
         <Row gutter={[16, 16]}>
           <Col span={24}>
-            <Autocomplete onLoad={handleAutocompleteLoaded}
-                          onPlaceChanged={handlePlaceChanged}>
-              <Input placeholder="Search address" />
-            </Autocomplete>
+            <Row align="middle">
+              <Col span={19}>
+                <Autocomplete onLoad={handleAutocompleteLoaded}
+                              onPlaceChanged={handleAutocompletePlaceChanged}>
+                  <Input placeholder="Search address" />
+                </Autocomplete>
+              </Col>
+              <Col span={5}>
+                <Row justify="end">
+                  <Col>
+                    <Switch checkedChildren="Draggable" unCheckedChildren="Non-draggable" />
+                  </Col>
+                </Row>
+              </Col>
+            </Row>
           </Col>
           <Col span={24}>
-            {markerPosition && searchedAddress &&
-              <i>
-                <span>{markerPosition.toUrlValue()}</span>
-                <span> | </span>
-                <span>{searchedAddress}</span>
-              </i>
-            }
+            <div>
+              {markerPosition?.toUrlValue(4)}
+            </div>
+            <div>
+              {searchedAddress}
+            </div>
+            {placeId && <div>
+              <a target="_blank"
+                 href={`https://www.google.com/maps/place?q=place_id:${placeId}`}
+                 rel="noreferrer"
+              >
+                Open in Google Maps ({placeId})
+              </a>
+            </div>}
             <GoogleMap center={center}
                        zoom={10}
-                       onClick={handleMapClick}
+              //onClick={handleMapClick}
                        mapContainerStyle={containerStyle}
                        onLoad={handleMapLoaded}
             >
               {markerPosition &&
                 <Marker position={markerPosition}
-                        draggable={true}
+                  //draggable={true}
                         onDragEnd={handleMarkerDragEnd}
-                        onPositionChanged={handleMarkerPositionChanged}
                         animation={google.maps.Animation.DROP}
                 />
               }
