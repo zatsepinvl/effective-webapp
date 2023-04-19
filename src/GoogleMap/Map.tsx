@@ -25,6 +25,7 @@ function MapMain(props: { apiKey: string, center: google.maps.LatLngLiteral }) {
   const [searchedAddress, setSearchedAddress] = useState<string | null>(null);
   const [placeId, setPlaceId] = useState<string | null>(null);
   const [geocoder, setGeocoder] = useState<google.maps.Geocoder | null>(null);
+  const [draggable, setDraggable] = useState(false);
 
 
   useEffect(() => {
@@ -80,7 +81,9 @@ function MapMain(props: { apiKey: string, center: google.maps.LatLngLiteral }) {
   };
 
   const handleMapClick = (event: google.maps.MapMouseEvent) => {
-    handleMarkerPositionChanged(event);
+    if (draggable) {
+      handleMarkerPositionChanged(event);
+    }
   };
 
   const handleMarkerDragEnd = (event: google.maps.MapMouseEvent) => {
@@ -105,6 +108,10 @@ function MapMain(props: { apiKey: string, center: google.maps.LatLngLiteral }) {
       });
   };
 
+  const handleDraggableChange = (checked: boolean) => {
+    setDraggable(checked);
+  };
+
   return isLoaded ? (
       <>
         <Row gutter={[16, 16]}>
@@ -119,7 +126,11 @@ function MapMain(props: { apiKey: string, center: google.maps.LatLngLiteral }) {
               <Col span={5}>
                 <Row justify="end">
                   <Col>
-                    <Switch checkedChildren="Draggable" unCheckedChildren="Non-draggable" />
+                    <Switch checkedChildren="Draggable"
+                            unCheckedChildren="Non-draggable"
+                            checked={draggable}
+                            onChange={handleDraggableChange}
+                    />
                   </Col>
                 </Row>
               </Col>
@@ -142,13 +153,13 @@ function MapMain(props: { apiKey: string, center: google.maps.LatLngLiteral }) {
             </div>}
             <GoogleMap center={center}
                        zoom={10}
-              //onClick={handleMapClick}
+                       onClick={handleMapClick}
                        mapContainerStyle={containerStyle}
                        onLoad={handleMapLoaded}
             >
               {markerPosition &&
                 <Marker position={markerPosition}
-                  //draggable={true}
+                        draggable={draggable}
                         onDragEnd={handleMarkerDragEnd}
                         animation={google.maps.Animation.DROP}
                 />
