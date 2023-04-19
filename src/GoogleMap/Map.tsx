@@ -11,6 +11,12 @@ const containerStyle = {
 
 const libraries: Libraries = ["places", "geometry"];
 
+function isIconMouseEvent(
+  event: google.maps.MapMouseEvent | google.maps.IconMouseEvent,
+): event is google.maps.IconMouseEvent {
+  return "placeId" in event;
+}
+
 function MapMain(props: { apiKey: string, center: google.maps.LatLngLiteral }) {
   const { isLoaded } = useLoadScript({
     googleMapsApiKey: props.apiKey,
@@ -80,17 +86,14 @@ function MapMain(props: { apiKey: string, center: google.maps.LatLngLiteral }) {
     }
   };
 
-  const handleMapClick = (event: google.maps.MapMouseEvent) => {
-    if (draggable) {
-      handleMarkerPositionChanged(event);
+  const handleMapClick = (event: google.maps.MapMouseEvent | google.maps.IconMouseEvent) => {
+    if (isIconMouseEvent(event)) {
+      setPlaceId(event.placeId);
+      setMarkerPosition(event.latLng);
     }
   };
 
   const handleMarkerDragEnd = (event: google.maps.MapMouseEvent) => {
-    handleMarkerPositionChanged(event);
-  };
-
-  const handleMarkerPositionChanged = (event: google.maps.MapMouseEvent) => {
     setMarkerPosition(event.latLng);
     geocodeMarkerCoordinatesToPlaceId(event);
   };
@@ -138,10 +141,7 @@ function MapMain(props: { apiKey: string, center: google.maps.LatLngLiteral }) {
           </Col>
           <Col span={24}>
             <div>
-              {markerPosition?.toUrlValue(4)}
-            </div>
-            <div>
-              {searchedAddress}
+              {markerPosition?.toUrlValue(4)} | {searchedAddress}
             </div>
             {placeId && <div>
               <a target="_blank"
